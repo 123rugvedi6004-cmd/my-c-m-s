@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Extended user information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "editor", "viewer"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "bio": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Post": {
+      "title": "Content Post",
+      "description": "A blog post or content entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string", "description": "Markdown content" },
+        "excerpt": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhoto": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "viewCount": { "type": "number" },
+        "likeCount": { "type": "number" },
+        "commentCount": { "type": "number" }
+      },
+      "required": ["title", "content", "authorId", "status"]
+    },
+    "Comment": {
+      "title": "Post Comment",
+      "description": "User comments on posts.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "parentId": { "type": "string", "description": "For nested replies" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likeCount": { "type": "number" }
+      },
+      "required": ["postId", "authorId", "text"]
+    },
+    "Notification": {
+      "title": "User Notification",
+      "description": "Alerts for comments, likes, etc.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["comment", "like", "mention", "follow"] },
+        "message": { "type": "string" },
+        "link": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "message"]
+    },
+    "SavedPost": {
+      "title": "Saved Post",
+      "description": "Posts bookmarked by users.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "postId": { "type": "string" },
+        "savedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "postId"]
+    },
+    "Follow": {
+      "title": "User Follow",
+      "description": "User following relationship.",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "followingId"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "User profiles" },
+    "posts": { "schema": "Post", "description": "Content posts" },
+    "comments": { "schema": "Comment", "description": "Post comments" },
+    "notifications": { "schema": "Notification", "description": "User notifications" },
+    "saved_posts": { "schema": "SavedPost", "description": "User bookmarked posts" },
+    "follows": { "schema": "Follow", "description": "User following relationships" }
+  }
+}

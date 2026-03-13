@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply antialiased;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors;
+  }
+}
+
+/* Typography Overrides */
+.prose {
+  @apply max-w-none;
+}
+
+.prose h1, .prose h2, .prose h3 {
+  @apply font-bold tracking-tight text-gray-900 dark:text-white;
+}
+
+.prose p {
+  @apply leading-relaxed text-gray-700 dark:text-gray-300;
+}
+
+.prose a {
+  @apply text-indigo-600 dark:text-indigo-400 no-underline hover:underline font-semibold;
+}
+
+.prose pre {
+  @apply bg-gray-900 text-gray-100 rounded-2xl p-6 overflow-x-auto border border-gray-800 my-8;
+}
+
+.prose code {
+  @apply bg-gray-100 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md font-mono text-sm;
+}
+
+.prose img {
+  @apply rounded-3xl shadow-2xl my-12;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-indigo-600 pl-6 italic text-gray-600 dark:text-gray-400 my-8;
+}

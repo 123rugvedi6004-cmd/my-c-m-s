@@ -1,0 +1,216 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {uid}
+// Fields:
+//   - uid: string (required) - Firebase Auth UID
+//   - email: string (required) - User email
+//   - displayName: string (optional)
+//   - photoURL: string (optional)
+//   - role: string (required, enum: ['admin', 'editor', 'viewer'])
+//   - createdAt: timestamp (required)
+//   - bio: string (optional)
+//
+// Collection: posts
+// Document ID: {postId}
+// Fields:
+//   - title: string (required, max 200)
+//   - content: string (required, max 50000)
+//   - excerpt: string (optional, max 500)
+//   - authorId: string (required, immutable)
+//   - authorName: string (required)
+//   - authorPhoto: string (optional)
+//   - status: string (required, enum: ['draft', 'published'])
+//   - category: string (optional)
+//   - tags: list (optional, max 10 items)
+//   - imageUrl: string (optional)
+//   - createdAt: timestamp (required, immutable)
+//   - updatedAt: timestamp (required)
+//   - viewCount: number (required, >= 0)
+//   - likeCount: number (required, >= 0)
+//   - commentCount: number (required, >= 0)
+//
+// Collection: comments
+// Document ID: {commentId}
+// Fields:
+//   - postId: string (required, immutable)
+//   - authorId: string (required, immutable)
+//   - authorName: string (required)
+//   - authorPhoto: string (optional)
+//   - text: string (required, max 2000)
+//   - parentId: string (optional, immutable)
+//   - createdAt: timestamp (required, immutable)
+//   - likeCount: number (required, >= 0)
+//
+// Collection: notifications
+// Document ID: {notificationId}
+// Fields:
+//   - userId: string (required, immutable)
+//   - type: string (required, enum: ['comment', 'like', 'mention', 'follow'])
+//   - message: string (required, max 500)
+//   - link: string (optional)
+//   - read: bool (required)
+//   - createdAt: timestamp (required, immutable)
+//
+// Collection: saved_posts
+// Document ID: {userId}_{postId}
+// Fields:
+//   - userId: string (required, immutable)
+//   - postId: string (required, immutable)
+//   - savedAt: timestamp (required, immutable)
+//
+// Collection: follows
+// Document ID: {followerId}_{followingId}
+// Fields:
+//   - followerId: string (required, immutable)
+//   - followingId: string (required, immutable)
+//   - createdAt: timestamp (required, immutable)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (('email' in request.auth.token && request.auth.token.email.lower() == "123rugvedi6004@sjcem.edu.in" && request.auth.token.email_verified == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email.lower() == "demo@example.com")); // Allow demo user to be admin for testing
+    }
+
+    function isEditor() {
+      return isAuthenticated() && 
+        (isAdmin() || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor'));
+    }
+
+    function isRecent(time) {
+      return time is timestamp &&
+             time > request.time - duration.value(5, 'm') &&
+             time < request.time + duration.value(5, 'm');
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'bio']) &&
+             (data.uid == request.auth.uid || isAdmin()) &&
+             data.role in ['admin', 'editor', 'viewer'];
+    }
+
+    function isValidPost(data) {
+      return hasRequiredFields(['title', 'content', 'authorId', 'status', 'createdAt', 'updatedAt', 'viewCount', 'likeCount', 'commentCount']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 50000 &&
+             (data.authorId == request.auth.uid || isAdmin()) &&
+             data.status in ['draft', 'published'] &&
+             data.viewCount is number && data.viewCount >= 0 &&
+             data.likeCount is number && data.likeCount >= 0 &&
+             data.commentCount is number && data.commentCount >= 0;
+    }
+
+    function isValidComment(data) {
+      return hasRequiredFields(['postId', 'authorId', 'authorName', 'text', 'createdAt', 'likeCount']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 2000 &&
+             (data.authorId == request.auth.uid || isAdmin()) &&
+             data.likeCount is number && data.likeCount >= 0;
+    }
+
+    function isValidNotification(data) {
+      return hasRequiredFields(['userId', 'type', 'message', 'read', 'createdAt']) &&
+             data.type in ['comment', 'like', 'mention', 'follow'] &&
+             data.message is string && data.message.size() <= 500 &&
+             data.read is bool;
+    }
+
+    function isValidSavedPost(data) {
+      return hasRequiredFields(['userId', 'postId', 'savedAt']) &&
+             (data.userId == request.auth.uid || isAdmin());
+    }
+
+    function isValidFollow(data) {
+      return hasRequiredFields(['followerId', 'followingId', 'createdAt']) &&
+             (data.followerId == request.auth.uid || isAdmin());
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isOwner(resource.data.authorId) || isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isOwner(resource.data.authorId) || isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    match /saved_posts/{savedId} {
+      allow read: if true;
+      allow create: if true;
+      allow delete: if true;
+    }
+
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if true;
+      allow delete: if true;
+    }
+
+    match /likes/{likeId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+  }
+}

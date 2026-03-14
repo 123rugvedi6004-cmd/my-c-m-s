@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile } from '../types';
@@ -11,6 +11,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isEditor: boolean;
   loginAsGuest: () => void;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -112,6 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   };
 
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error('Google login error:', err);
+      throw err;
+    }
+  };
+
   const logout = async () => {
     if (isGuest) {
       localStorage.removeItem('guest_session');
@@ -130,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin: profile?.role === 'admin',
     isEditor: profile?.role === 'admin' || profile?.role === 'editor',
     loginAsGuest,
+    loginWithGoogle,
     logout,
   };
 

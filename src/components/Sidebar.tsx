@@ -65,7 +65,7 @@ export default function Sidebar() {
                 C
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-                CMS Pro
+                CMS
               </span>
             </div>
           </div>

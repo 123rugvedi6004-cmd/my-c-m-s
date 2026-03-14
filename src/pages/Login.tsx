@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { motion } from 'motion/react';
-import { LogIn, Github, Mail, ShieldCheck, UserCircle } from 'lucide-react';
+import { Mail, ShieldCheck, UserCircle } from 'lucide-react';
 import { seedDatabase } from '../lib/seedData';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -12,14 +13,34 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const { loginAsGuest } = useAuth();
+  const { loginAsGuest, loginWithGoogle } = useAuth();
+  const navigate = useNavigate();
 
   const handleGuestLogin = () => {
     setLoading(true);
     try {
       loginAsGuest();
+      navigate('/');
     } catch (err: any) {
       setError('Guest login failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await loginWithGoogle();
+      navigate('/');
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Google login is DISABLED in Firebase Console. Please enable it in Authentication > Sign-in method.');
+      } else {
+        setError('Google login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -30,59 +51,17 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (err: any) {
-        // If it's the demo account and it doesn't exist, try to create it
-        if (email === 'demo@example.com' && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
-          await seedDatabase();
-          await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          throw err;
-        }
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate('/');
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/operation-not-allowed') {
         setError('Email/Password auth is DISABLED in Firebase Console. Please enable it in Authentication > Sign-in method.');
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setError('Invalid email or password. For demo, use: demo@example.com / password123');
+        setError('Invalid email or password.');
       } else {
         setError(err.message || 'An error occurred during login.');
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Try to sign in first
-      try {
-        await signInWithEmailAndPassword(auth, 'demo@example.com', 'password123');
-      } catch (signInErr: any) {
-        // If user doesn't exist, try to create them
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-          try {
-            await createUserWithEmailAndPassword(auth, 'demo@example.com', 'password123');
-          } catch (createErr: any) {
-            console.error(createErr);
-            throw new Error('Could not create demo account. Please ensure Email/Password auth is enabled in Firebase Console.');
-          }
-        } else {
-          throw signInErr;
-        }
-      }
-      
-      // Now that we are logged in, we can seed the database
-      // The AuthContext will pick up the new user and create their profile
-      await seedDatabase();
-      
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Demo login failed. Please ensure Email/Password auth is enabled in Firebase Console.');
     } finally {
       setLoading(false);
     }
@@ -106,7 +85,7 @@ export default function Login() {
           </p>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm border border-red-100 dark:border-red-900/30 flex flex-col gap-2">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm border border-red-100 dark:border-red-900/30 flex flex-col gap-2 text-left">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
@@ -118,7 +97,7 @@ export default function Login() {
                   <ol className="list-decimal ml-4 space-y-1">
                     <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-emerald-400 underline">Firebase Console</a></li>
                     <li>Authentication &gt; Sign-in method</li>
-                    <li>Enable "Email/Password"</li>
+                    <li>Enable the required provider</li>
                     <li>Refresh this page</li>
                   </ol>
                 </div>
@@ -130,21 +109,21 @@ export default function Login() {
             {!showEmailForm ? (
               <>
                 <button 
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-white font-semibold py-3 px-6 rounded-xl transition-all hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm"
+                >
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                  <span>{loading ? 'Connecting...' : 'Continue with Google'}</span>
+                </button>
+
+                <button 
                   onClick={handleGuestLogin}
                   disabled={loading}
                   className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
                 >
                   <UserCircle size={20} />
                   <span>{loading ? 'Entering...' : 'Guest Session (No Login)'}</span>
-                </button>
-
-                <button 
-                  onClick={handleDemoLogin}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-                >
-                  <ShieldCheck size={20} />
-                  <span>{loading ? 'Seeding...' : 'Demo Login (Seed Data)'}</span>
                 </button>
 
                 <div className="relative my-8">
@@ -174,7 +153,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    placeholder="demo@example.com"
+                    placeholder="you@example.com"
                   />
                 </div>
                 <div>

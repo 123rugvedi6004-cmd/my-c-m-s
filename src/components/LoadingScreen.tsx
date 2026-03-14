@@ -18,7 +18,7 @@ export default function LoadingScreen() {
         className="h-1 bg-indigo-600 rounded-full mt-8"
       />
       <p className="mt-4 text-gray-500 dark:text-gray-400 font-medium animate-pulse">
-        Loading CMS Pro...
+        Loading CMS...
       </p>
     </div>
   );

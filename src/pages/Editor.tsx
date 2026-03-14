@@ -240,7 +240,7 @@ export default function Editor() {
           </div>
           
           <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-3xl border border-indigo-100 dark:border-indigo-900/30">
-            <h4 className="text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-2">Pro Tip</h4>
+            <h4 className="text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-2">Writing Tip</h4>
             <p className="text-indigo-800/70 dark:text-indigo-300/70 text-xs leading-relaxed">
               Use Markdown to format your post. You can add headers, lists, code blocks, and more to make your content engaging.
             </p>

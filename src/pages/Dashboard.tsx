@@ -265,16 +265,6 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-          <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-8 rounded-3xl text-white shadow-xl shadow-indigo-500/20">
-            <h3 className="text-xl font-bold mb-2">Upgrade to Pro</h3>
-            <p className="text-indigo-100 text-sm mb-6 leading-relaxed">
-              Unlock advanced analytics, custom domains, and team collaboration features.
-            </p>
-            <button className="w-full py-3 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-colors shadow-lg">
-              View Plans
-            </button>
-          </div>
-
           <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <h3 className="text-lg font-bold mb-4">Platform Stats</h3>
             <div className="space-y-4">

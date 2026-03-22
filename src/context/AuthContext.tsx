@@ -24,54 +24,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    // Check if guest session exists in local storage
+    // 1. Check if guest session exists in local storage on mount
     const guestData = localStorage.getItem('guest_session');
     if (guestData) {
-      const data = JSON.parse(guestData);
-      setUser(data.user);
-      setProfile(data.profile);
-      setIsGuest(true);
-      setLoading(false);
-      return;
+      try {
+        const data = JSON.parse(guestData);
+        setUser(data.user);
+        setProfile(data.profile);
+        setIsGuest(true);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to parse guest session:', err);
+        localStorage.removeItem('guest_session');
+      }
     }
+  }, []);
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (isGuest) return; // Don't override guest session
+  useEffect(() => {
+    // 2. Auth listener
+    if (isGuest) return;
 
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        // Listen to profile changes
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        
-        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
-            setLoading(false);
-          } else {
-            // Create initial profile if it doesn't exist
-            const isDemo = firebaseUser.email === 'demo@example.com';
-            const newProfile: Partial<UserProfile> = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || (isDemo ? 'Demo User' : 'New User'),
-              photoURL: firebaseUser.photoURL || (isDemo ? 'https://ui-avatars.com/api/?name=Demo+User&background=6366f1&color=fff' : null),
-              role: isDemo ? 'admin' : 'viewer', // Demo user is admin
-              createdAt: serverTimestamp() as any,
-            };
-            
-            console.log('Creating initial profile for user:', firebaseUser.uid, newProfile);
-            setDoc(userDocRef, newProfile).catch(err => {
-              handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
-            });
-            // Profile will be set by the next snapshot
-          }
-        }, (err) => {
-          handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
-        });
-
-        return () => unsubscribeProfile();
-      } else {
+      if (!firebaseUser) {
         setProfile(null);
         setLoading(false);
       }
@@ -80,7 +55,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribeAuth();
   }, [isGuest]);
 
+  useEffect(() => {
+    // 3. Profile listener
+    if (isGuest || !user?.uid) return;
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setProfile(docSnap.data() as UserProfile);
+        setLoading(false);
+      } else {
+        // Create initial profile if it doesn't exist
+        const isDemo = user.email === 'demo@example.com';
+        const emailPrefix = user.email ? user.email.split('@')[0] : 'user';
+        const formattedName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+        
+        const newProfile: Partial<UserProfile> = {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || (isDemo ? 'Demo User' : formattedName),
+          photoURL: user.photoURL || (isDemo ? 'https://ui-avatars.com/api/?name=Demo+User&background=6366f1&color=fff' : `https://ui-avatars.com/api/?name=${formattedName}&background=6366f1&color=fff`),
+          role: isDemo ? 'admin' : 'viewer',
+          createdAt: serverTimestamp() as any,
+        };
+        
+        setDoc(userDocRef, newProfile).catch(err => {
+          handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+        });
+      }
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+    });
+
+    return () => unsubscribeProfile();
+  }, [user?.uid, isGuest]);
+
   const loginAsGuest = async () => {
+    // Sign out from Firebase if logged in to avoid listener conflicts
+    await auth.signOut();
     const guestUser = {
       uid: 'guest_user_123',
       email: 'guest@example.com',

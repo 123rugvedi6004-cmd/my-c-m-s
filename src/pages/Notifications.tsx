@@ -51,12 +51,18 @@ export default function Notifications() {
     switch (type) {
       case 'comment': return <MessageCircle className="text-blue-500" size={18} />;
       case 'like': return <Heart className="text-red-500" size={18} />;
-      case 'mention': return <UserPlus className="text-indigo-500" size={18} />;
+      case 'follow': return <UserPlus className="text-indigo-500" size={18} />;
+      case 'post_removed': return <Trash2 className="text-red-600" size={18} />;
+      case 'mention': return <Bell className="text-indigo-500" size={18} />;
       default: return <Bell className="text-gray-500" size={18} />;
     }
   };
 
-  if (loading) return <div className="space-y-4">{[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 dark:bg-gray-900 rounded-2xl animate-pulse" />)}</div>;
+  if (loading) return (
+    <div className="max-w-3xl mx-auto space-y-4">
+      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-100 dark:bg-gray-900 rounded-3xl animate-pulse" />)}
+    </div>
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -65,13 +71,15 @@ export default function Notifications() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notifications</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Stay updated with your latest interactions.</p>
         </div>
-        <button 
-          onClick={markAllAsRead}
-          className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-        >
-          <CheckCircle2 size={18} />
-          Mark all as read
-        </button>
+        {notifications.some(n => !n.read) && (
+          <button 
+            onClick={markAllAsRead}
+            className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+          >
+            <CheckCircle2 size={18} />
+            Mark all as read
+          </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
@@ -80,22 +88,40 @@ export default function Notifications() {
             {notifications.map((notif, index) => (
               <motion.div 
                 key={notif.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`p-6 flex items-start gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${!notif.read ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
+                className={`p-6 flex items-start gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors relative ${!notif.read ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
               >
-                <div className={`p-3 rounded-xl ${!notif.read ? 'bg-white dark:bg-gray-800' : 'bg-gray-100 dark:bg-gray-800'} shadow-sm`}>
-                  {getIcon(notif.type)}
+                <div className="relative">
+                  <img 
+                    src={notif.fromUserPhoto || `https://ui-avatars.com/api/?name=${notif.fromUserName || 'User'}`} 
+                    alt="" 
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white dark:border-gray-800"
+                  />
+                  <div className="absolute -bottom-1 -right-1 p-1 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-100 dark:border-gray-700">
+                    {getIcon(notif.type)}
+                  </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!notif.read ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'}`}>
-                    {notif.message}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">{timeAgo(notif.createdAt)}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={`text-sm ${!notif.read ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'}`}>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 mr-1">{notif.fromUserName}</span>
+                      {notif.message}
+                    </p>
+                    <p className="text-[10px] text-gray-400 whitespace-nowrap">{timeAgo(notif.createdAt)}</p>
+                  </div>
+                  {notif.link && (
+                    <Link 
+                      to={notif.link}
+                      className="inline-block mt-2 text-xs font-bold text-indigo-600 hover:underline"
+                    >
+                      View details
+                    </Link>
+                  )}
                 </div>
                 {!notif.read && (
-                  <div className="w-2 h-2 bg-indigo-600 rounded-full mt-2"></div>
+                  <div className="absolute top-6 right-6 w-2 h-2 bg-indigo-600 rounded-full"></div>
                 )}
               </motion.div>
             ))}

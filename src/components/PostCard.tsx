@@ -62,8 +62,12 @@ export default function PostCard({ post }: PostCardProps) {
         if (post.authorId !== user.uid) {
           await setDoc(doc(collection(db, 'notifications')), {
             userId: post.authorId,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserPhoto: user.photoURL,
+            postId: post.id,
             type: 'like',
-            message: `${user.displayName} liked your post: ${post.title}`,
+            message: `liked your post: ${post.title}`,
             link: `/post/${post.id}`,
             read: false,
             createdAt: new Date()

@@ -12,14 +12,16 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const { loginAsGuest, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     setLoading(true);
     try {
-      loginAsGuest();
+      await loginAsGuest();
       navigate('/');
     } catch (err: any) {
       setError('Guest login failed.');
@@ -46,12 +48,16 @@ export default function Login() {
     }
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
       navigate('/');
     } catch (err: any) {
       console.error(err);
@@ -59,8 +65,12 @@ export default function Login() {
         setError('Email/Password auth is DISABLED in Firebase Console. Please enable it in Authentication > Sign-in method.');
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         setError('Invalid email or password.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('Email already in use.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters.');
       } else {
-        setError(err.message || 'An error occurred during login.');
+        setError(err.message || 'An error occurred during authentication.');
       }
     } finally {
       setLoading(false);
@@ -79,9 +89,11 @@ export default function Login() {
             C
           </div>
           
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome Back</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
+          </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-10">
-            Sign in to manage your content and engage with the community.
+            {isSignUp ? 'Join our community and start sharing your thoughts.' : 'Sign in to manage your content and engage with the community.'}
           </p>
 
           {error && (
@@ -144,7 +156,7 @@ export default function Login() {
                 </button>
               </>
             ) : (
-              <form onSubmit={handleEmailLogin} className="space-y-4 text-left">
+              <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
                   <input 
@@ -172,15 +184,27 @@ export default function Login() {
                   disabled={loading}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-50"
                 >
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? (isSignUp ? 'Creating...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
                 </button>
-                <button 
-                  type="button"
-                  onClick={() => setShowEmailForm(false)}
-                  className="w-full text-sm text-gray-500 hover:text-indigo-600 transition-all text-center"
-                >
-                  Back to other options
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="w-full text-sm text-indigo-600 dark:text-indigo-400 hover:underline transition-all text-center"
+                  >
+                    {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowEmailForm(false);
+                      setIsSignUp(false);
+                    }}
+                    className="w-full text-sm text-gray-500 hover:text-indigo-600 transition-all text-center"
+                  >
+                    Back to other options
+                  </button>
+                </div>
               </form>
             )}
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, limit, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, limit, deleteDoc, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { Post, UserProfile } from '../types';
@@ -15,6 +15,21 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'users' | 'posts'>('users');
   const [seeding, setSeeding] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [updatingRole, setUpdatingRole] = useState(false);
+
+  const handleUpdateRole = async (uid: string, newRole: string) => {
+    setUpdatingRole(true);
+    try {
+      await updateDoc(doc(db, 'users', uid), { role: newRole });
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: newRole as any } : u));
+      setEditingUser(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
+    } finally {
+      setUpdatingRole(false);
+    }
+  };
 
   const handleSeed = async () => {
     if (!window.confirm('This will populate the database with sample users and posts. Continue?')) return;
@@ -28,6 +43,30 @@ export default function AdminPanel() {
       alert('Failed to seed database.');
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const handleDeletePost = async (post: Post) => {
+    if (!window.confirm(`Are you sure you want to delete "${post.title}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'posts', post.id));
+      setPosts(prev => prev.filter(p => p.id !== post.id));
+
+      // Notify author
+      await addDoc(collection(db, 'notifications'), {
+        userId: post.authorId,
+        fromUserId: 'system',
+        fromUserName: 'Admin',
+        fromUserPhoto: 'https://ui-avatars.com/api/?name=Admin&background=ef4444&color=fff',
+        postId: post.id,
+        type: 'post_removed',
+        message: `Your post "${post.title}" was removed by an admin for violating community guidelines.`,
+        link: '/',
+        read: false,
+        createdAt: new Date()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `posts/${post.id}`);
     }
   };
 
@@ -129,7 +168,33 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{formatDate(u.createdAt)}</td>
                     <td className="px-6 py-4">
-                      <button className="text-indigo-600 hover:underline text-sm font-bold">Edit Role</button>
+                      {editingUser?.uid === u.uid ? (
+                        <div className="flex items-center gap-2">
+                          <select 
+                            className="text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 outline-none"
+                            value={u.role}
+                            onChange={(e) => handleUpdateRole(u.uid, e.target.value)}
+                            disabled={updatingRole}
+                          >
+                            <option value="viewer">Viewer</option>
+                            <option value="editor">Editor</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <button 
+                            onClick={() => setEditingUser(null)}
+                            className="text-xs text-gray-400 hover:text-gray-600"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => setEditingUser(u)}
+                          className="text-indigo-600 hover:underline text-sm font-bold"
+                        >
+                          Edit Role
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -163,7 +228,10 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <button className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleDeletePost(p)}
+                          className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                        >
                           <Trash2 size={18} />
                         </button>
                         <button className="text-amber-600 hover:bg-amber-50 p-2 rounded-lg transition-colors">

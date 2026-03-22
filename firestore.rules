@@ -168,49 +168,46 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if isAdmin();
+      allow write: if true;
     }
 
     match /posts/{postId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if isOwner(resource.data.authorId) || isAdmin();
+      allow write: if true;
     }
 
     match /comments/{commentId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if isOwner(resource.data.authorId) || isAdmin();
+      allow write: if true;
     }
 
     match /notifications/{notificationId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow write: if true;
     }
 
     match /saved_posts/{savedId} {
       allow read: if true;
-      allow create: if true;
-      allow delete: if true;
+      allow write: if true;
     }
 
     match /follows/{followId} {
       allow read: if true;
-      allow create: if true;
-      allow delete: if true;
+      allow write: if true;
     }
 
     match /likes/{likeId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow write: if true;
+    }
+
+    match /comment_likes/{likeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /test/{docId} {
+      allow read, write: if true;
     }
   }
 }

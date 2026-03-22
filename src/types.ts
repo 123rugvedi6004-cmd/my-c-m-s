@@ -10,6 +10,7 @@ export interface UserProfile {
   role: UserRole;
   createdAt: Timestamp;
   bio?: string;
+  location?: string;
 }
 
 export type PostStatus = 'draft' | 'published';
@@ -47,10 +48,14 @@ export interface Comment {
 
 export interface Notification {
   id: string;
-  userId: string;
-  type: 'comment' | 'like' | 'mention' | 'follow';
+  userId: string; // Recipient
+  fromUserId: string; // Actor
+  fromUserName: string;
+  fromUserPhoto?: string;
+  type: 'comment' | 'like' | 'follow' | 'post_removed' | 'mention';
   message: string;
   link?: string;
+  postId?: string;
   read: boolean;
   createdAt: Timestamp;
 }

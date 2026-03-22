@@ -120,8 +120,12 @@ export default function PostDetail() {
         if (post.authorId !== user.uid) {
           await addDoc(collection(db, 'notifications'), {
             userId: post.authorId,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserPhoto: user.photoURL,
+            postId: id,
             type: 'like',
-            message: `${user.displayName} liked your post: ${post.title}`,
+            message: `liked your post: ${post.title}`,
             link: `/post/${id}`,
             read: false,
             createdAt: new Date()
@@ -169,8 +173,11 @@ export default function PostDetail() {
 
         await addDoc(collection(db, 'notifications'), {
           userId: post.authorId,
+          fromUserId: user.uid,
+          fromUserName: user.displayName,
+          fromUserPhoto: user.photoURL,
           type: 'follow',
-          message: `${user.displayName} started following you`,
+          message: `started following you`,
           link: `/profile/${user.uid}`,
           read: false,
           createdAt: new Date()
@@ -204,8 +211,12 @@ export default function PostDetail() {
       if (post && post.authorId !== user.uid) {
         await addDoc(collection(db, 'notifications'), {
           userId: post.authorId,
+          fromUserId: user.uid,
+          fromUserName: user.displayName,
+          fromUserPhoto: user.photoURL,
+          postId: id,
           type: 'comment',
-          message: `${user.displayName} commented on your post: ${post.title}`,
+          message: `commented on your post: ${post.title}`,
           link: `/post/${id}`,
           read: false,
           createdAt: new Date()
@@ -216,6 +227,41 @@ export default function PostDetail() {
       setReplyTo(null);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'comments');
+    }
+  };
+
+  const handleLikeComment = async (comment: CommentType) => {
+    if (!user) return;
+    const likeId = `${user.uid}_${comment.id}`;
+    const likeRef = doc(db, 'comment_likes', likeId);
+    const commentRef = doc(db, 'comments', comment.id);
+
+    try {
+      const likeDoc = await getDoc(likeRef);
+      if (likeDoc.exists()) {
+        await deleteDoc(likeRef);
+        await updateDoc(commentRef, { likeCount: increment(-1) });
+      } else {
+        await setDoc(likeRef, { userId: user.uid, commentId: comment.id, createdAt: new Date() });
+        await updateDoc(commentRef, { likeCount: increment(1) });
+
+        if (comment.authorId !== user.uid) {
+          await addDoc(collection(db, 'notifications'), {
+            userId: comment.authorId,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserPhoto: user.photoURL,
+            postId: id,
+            type: 'like',
+            message: `liked your comment: ${comment.text.substring(0, 30)}${comment.text.length > 30 ? '...' : ''}`,
+            link: `/post/${id}`,
+            read: false,
+            createdAt: new Date()
+          });
+        }
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `comments/${comment.id}`);
     }
   };
 
@@ -416,7 +462,12 @@ export default function PostDetail() {
                     </p>
                   </div>
                   <div className="flex items-center gap-4 mt-2 ml-2">
-                    <button className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors">Like</button>
+                    <button 
+                      onClick={() => handleLikeComment(comment)}
+                      className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors"
+                    >
+                      Like ({comment.likeCount || 0})
+                    </button>
                     <button 
                       onClick={() => {
                         setReplyTo(comment.id);
@@ -463,7 +514,12 @@ export default function PostDetail() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 mt-1 ml-2">
-                        <button className="text-[10px] font-bold text-gray-500 hover:text-indigo-600 transition-colors">Like</button>
+                        <button 
+                          onClick={() => handleLikeComment(reply)}
+                          className="text-[10px] font-bold text-gray-500 hover:text-indigo-600 transition-colors"
+                        >
+                          Like ({reply.likeCount || 0})
+                        </button>
                         {(user?.uid === reply.authorId || profile?.role === 'admin') && (
                           <button 
                             onClick={() => handleDeleteComment(reply.id)}

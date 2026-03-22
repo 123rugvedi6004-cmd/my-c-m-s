@@ -277,173 +277,211 @@ const SAMPLE_POSTS = [
 export async function seedDatabase() {
   console.log('Starting seed...');
 
-  // 1. Create User Profiles
-  for (const userData of SAMPLE_USERS) {
-    const userRef = doc(db, 'users', userData.uid);
-    await setDoc(userRef, {
-      ...userData,
-      createdAt: serverTimestamp()
-    }, { merge: true });
-  }
+  try {
+    // 1. Create User Profiles
+    console.log('Seeding users...');
+    for (const userData of SAMPLE_USERS) {
+      const userRef = doc(db, 'users', userData.uid);
+      await setDoc(userRef, {
+        ...userData,
+        createdAt: serverTimestamp()
+      }, { merge: true });
+    }
 
-  // 2. Create Posts
-  for (const postData of SAMPLE_POSTS) {
-    const postSlug = postData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const postRef = doc(db, 'posts', postSlug);
-    
-    // Check if post already exists
+    // 2. Create Posts
+    console.log('Seeding posts...');
     const postSnap = await getDocs(collection(db, 'posts'));
-    const exists = postSnap.docs.some(d => d.id === postSlug);
-    
-    if (!exists) {
-      await setDoc(postRef, {
-        ...postData,
-        id: postSlug,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+    const existingPostIds = postSnap.docs.map(d => d.id);
 
-      // 3. Add some comments to each post
-      const comments = [
-        {
-          postId: postSlug,
-          authorId: 'user_2',
-          authorName: 'Sarah Chen',
-          authorPhoto: 'https://picsum.photos/seed/sarah/200/200',
-          text: 'Great insights! I especially agree with the points mentioned.',
+    for (const postData of SAMPLE_POSTS) {
+      const postSlug = postData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      
+      if (!existingPostIds.includes(postSlug)) {
+        const postRef = doc(db, 'posts', postSlug);
+        await setDoc(postRef, {
+          ...postData,
+          id: postSlug,
           createdAt: serverTimestamp(),
-          likeCount: 5
-        },
-        {
-          postId: postSlug,
-          authorId: 'user_3',
-          authorName: 'Marcus Jordan',
-          authorPhoto: 'https://picsum.photos/seed/marcus/200/200',
-          text: 'I love the design of this blog. Very clean.',
-          createdAt: serverTimestamp(),
-          likeCount: 2
+          updatedAt: serverTimestamp()
+        });
+
+        // 3. Add some comments to each post
+        const comments = [
+          {
+            postId: postSlug,
+            authorId: 'user_2',
+            authorName: 'Sarah Chen',
+            authorPhoto: 'https://picsum.photos/seed/sarah/200/200',
+            text: 'Great insights! I especially agree with the points mentioned.',
+            createdAt: serverTimestamp(),
+            likeCount: 5
+          },
+          {
+            postId: postSlug,
+            authorId: 'user_3',
+            authorName: 'Marcus Jordan',
+            authorPhoto: 'https://picsum.photos/seed/marcus/200/200',
+            text: 'I love the design of this blog. Very clean.',
+            createdAt: serverTimestamp(),
+            likeCount: 2
+          }
+        ];
+
+        for (const comment of comments) {
+          await addDoc(collection(db, 'comments'), comment);
         }
-      ];
-
-      for (const comment of comments) {
-        await addDoc(collection(db, 'comments'), comment);
       }
     }
-  }
 
-  // 4. Add some follows
-  const follows = [
-    { followerId: 'user_1', followingId: 'user_2', createdAt: serverTimestamp() },
-    { followerId: 'user_2', followingId: 'user_1', createdAt: serverTimestamp() },
-    { followerId: 'user_3', followingId: 'user_1', createdAt: serverTimestamp() },
-    { followerId: 'guest_user_123', followingId: 'user_1', createdAt: serverTimestamp() },
-    { followerId: 'guest_user_123', followingId: 'user_4', createdAt: serverTimestamp() },
-    { followerId: 'user_1', followingId: 'guest_user_123', createdAt: serverTimestamp() }
-  ];
+    // 4. Add some follows
+    console.log('Seeding follows...');
+    const follows = [
+      { followerId: 'user_1', followingId: 'user_2', createdAt: serverTimestamp() },
+      { followerId: 'user_2', followingId: 'user_1', createdAt: serverTimestamp() },
+      { followerId: 'user_3', followingId: 'user_1', createdAt: serverTimestamp() },
+      { followerId: 'guest_user_123', followingId: 'user_1', createdAt: serverTimestamp() },
+      { followerId: 'guest_user_123', followingId: 'user_4', createdAt: serverTimestamp() },
+      { followerId: 'user_1', followingId: 'guest_user_123', createdAt: serverTimestamp() }
+    ];
 
-  for (const follow of follows) {
-    const followId = `${follow.followerId}_${follow.followingId}`;
-    await setDoc(doc(db, 'follows', followId), follow);
-  }
-
-  // 5. Add some notifications for the guest user
-  const notifications = [
-    {
-      id: 'notif_1',
-      userId: 'guest_user_123',
-      type: 'follow',
-      message: 'Alex Rivera started following you',
-      link: '/profile/user_1',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_2',
-      userId: 'guest_user_123',
-      type: 'like',
-      message: 'Sarah Chen liked your post: My First Post as a Guest',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_3',
-      userId: 'guest_user_123',
-      type: 'comment',
-      message: 'Marcus Jordan commented on your post: The Art of Productivity',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_4',
-      userId: 'guest_user_123',
-      type: 'follow',
-      message: 'Elena Volkov started following you',
-      link: '/profile/user_4',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_5',
-      userId: 'guest_user_123',
-      type: 'like',
-      message: 'David Kim liked your post: The Art of Productivity',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_6',
-      userId: 'guest_user_123',
-      type: 'mention',
-      message: 'Maya Patel mentioned you in a post: The Joy of Composting',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_7',
-      userId: 'guest_user_123',
-      type: 'system',
-      message: 'Your post "My First Post as a Guest" reached 100 views!',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_8',
-      userId: 'guest_user_123',
-      type: 'comment',
-      message: 'David Kim commented on your post: My First Post as a Guest',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_9',
-      userId: 'guest_user_123',
-      type: 'like',
-      message: 'Maya Patel liked your post: The Art of Productivity',
-      link: '/post/some_id',
-      read: false,
-      createdAt: serverTimestamp()
-    },
-    {
-      id: 'notif_10',
-      userId: 'guest_user_123',
-      type: 'follow',
-      message: 'Marcus Jordan started following you',
-      link: '/profile/user_3',
-      read: false,
-      createdAt: serverTimestamp()
+    for (const follow of follows) {
+      const followId = `${follow.followerId}_${follow.followingId}`;
+      await setDoc(doc(db, 'follows', followId), follow);
     }
-  ];
 
-  for (const notif of notifications) {
-    const { id, ...data } = notif;
-    await setDoc(doc(db, 'notifications', id), data, { merge: true });
+    // 5. Add some notifications for the guest user
+    console.log('Seeding notifications...');
+    const notifications = [
+      {
+        id: 'notif_1',
+        userId: 'guest_user_123',
+        fromUserId: 'user_1',
+        fromUserName: 'Alex Rivera',
+        fromUserPhoto: 'https://picsum.photos/seed/alex/200/200',
+        type: 'follow',
+        message: 'started following you',
+        link: '/profile/user_1',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_2',
+        userId: 'guest_user_123',
+        fromUserId: 'user_2',
+        fromUserName: 'Sarah Chen',
+        fromUserPhoto: 'https://picsum.photos/seed/sarah/200/200',
+        type: 'like',
+        message: 'liked your post: My First Post as a Guest',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_3',
+        userId: 'guest_user_123',
+        fromUserId: 'user_3',
+        fromUserName: 'Marcus Jordan',
+        fromUserPhoto: 'https://picsum.photos/seed/marcus/200/200',
+        type: 'comment',
+        message: 'commented on your post: The Art of Productivity',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_4',
+        userId: 'guest_user_123',
+        fromUserId: 'user_4',
+        fromUserName: 'Elena Volkov',
+        fromUserPhoto: 'https://picsum.photos/seed/elena/200/200',
+        type: 'follow',
+        message: 'started following you',
+        link: '/profile/user_4',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_5',
+        userId: 'guest_user_123',
+        fromUserId: 'user_5',
+        fromUserName: 'David Kim',
+        fromUserPhoto: 'https://picsum.photos/seed/david/200/200',
+        type: 'like',
+        message: 'liked your post: The Art of Productivity',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_6',
+        userId: 'guest_user_123',
+        fromUserId: 'user_6',
+        fromUserName: 'Maya Patel',
+        fromUserPhoto: 'https://picsum.photos/seed/maya/200/200',
+        type: 'mention',
+        message: 'mentioned you in a post: The Joy of Composting',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_7',
+        userId: 'guest_user_123',
+        fromUserId: 'system',
+        fromUserName: 'System',
+        fromUserPhoto: 'https://ui-avatars.com/api/?name=System&background=6366f1&color=fff',
+        type: 'system',
+        message: 'Your post "My First Post as a Guest" reached 100 views!',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_8',
+        userId: 'guest_user_123',
+        fromUserId: 'user_5',
+        fromUserName: 'David Kim',
+        fromUserPhoto: 'https://picsum.photos/seed/david/200/200',
+        type: 'comment',
+        message: 'commented on your post: My First Post as a Guest',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_9',
+        userId: 'guest_user_123',
+        fromUserId: 'user_6',
+        fromUserName: 'Maya Patel',
+        fromUserPhoto: 'https://picsum.photos/seed/maya/200/200',
+        type: 'like',
+        message: 'liked your post: The Art of Productivity',
+        link: '/post/some_id',
+        read: false,
+        createdAt: serverTimestamp()
+      },
+      {
+        id: 'notif_10',
+        userId: 'guest_user_123',
+        fromUserId: 'user_3',
+        fromUserName: 'Marcus Jordan',
+        fromUserPhoto: 'https://picsum.photos/seed/marcus/200/200',
+        type: 'follow',
+        message: 'started following you',
+        link: '/profile/user_3',
+        read: false,
+        createdAt: serverTimestamp()
+      }
+    ];
+
+    for (const notif of notifications) {
+      const { id, ...data } = notif;
+      await setDoc(doc(db, 'notifications', id), data, { merge: true });
+    }
+
+    console.log('Seed completed successfully!');
+  } catch (error) {
+    console.error('Seed failed:', error);
+    throw error;
   }
-
-  console.log('Seed completed successfully!');
 }

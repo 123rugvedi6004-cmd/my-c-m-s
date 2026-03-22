@@ -25,7 +25,6 @@ const navItems = [
   { icon: FileText, label: 'My Posts', path: '/my-posts' },
   { icon: Compass, label: 'Explore', path: '/explore' },
   { icon: Bookmark, label: 'Saved Content', path: '/saved' },
-  { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: User, label: 'Profile', path: '/profile' },
   { icon: Settings, label: 'Settings', path: '/settings' },
   { icon: Shield, label: 'Admin Panel', path: '/admin', adminOnly: true },
@@ -65,7 +64,7 @@ export default function Sidebar() {
                 C
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-                CMS
+                ContentCore
               </span>
             </div>
           </div>
